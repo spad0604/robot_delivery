@@ -1,0 +1,63 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Robot Delivery (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--dart-define-from-file",
+                "assets/.env"
+            ]
+        },
+        {
+            "name": "Robot Delivery (Profile)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "flutterMode": "profile",
+            "args": [
+                "--dart-define-from-file",
+                "assets/.env"
+            ]
+        },
+        {
+            "name": "Robot Delivery (Release)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "flutterMode": "release",
+            "args": [
+                "--dart-define-from-file",
+                "assets/.env"
+            ]
+        },
+        {
+            "name": "Robot Delivery (Android)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "android",
+                "--dart-define-from-file",
+                "assets/.env"
+            ]
+        },
+        {
+            "name": "Robot Delivery (Chrome)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "chrome",
+                "--web-renderer",
+                "html",
+                "--dart-define-from-file",
+                "assets/.env"
+            ]
+        }
+    ]
+}

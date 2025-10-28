@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "384967649765",
+    "firebase_url": "https://robot-delivery-cbdcf-default-rtdb.firebaseio.com",
+    "project_id": "robot-delivery-cbdcf",
+    "storage_bucket": "robot-delivery-cbdcf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:384967649765:android:01d4e46cddc9d7defc270c",
+        "android_client_info": {
+          "package_name": "com.example.robot_delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBP5gSFWa-XYFBhMxFbOcyjwzSycB52suE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
