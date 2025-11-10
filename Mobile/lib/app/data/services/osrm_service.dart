@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class OSRMService {
   // OSRM public demo server (miễn phí)
@@ -11,16 +10,21 @@ class OSRMService {
   // - https://router.project-osrm.org
   
   /// Lấy lộ trình giữa 2 điểm
-  /// Returns: List of LatLng points forming the route
-  static Future<List<LatLng>> getRoute({
-    required LatLng origin,
-    required LatLng destination,
+  /// Returns: List of Map<String, double> points forming the route
+  static Future<List<Map<String, double>>> getRoute({
+    required dynamic origin,
+    required dynamic destination,
   }) async {
     try {
       // Format: /route/v1/{profile}/{coordinates}
       // coordinates: longitude,latitude;longitude,latitude
+      final originLat = origin.latitude ?? origin['latitude'];
+      final originLng = origin.longitude ?? origin['longitude'];
+      final destLat = destination.latitude ?? destination['latitude'];
+      final destLng = destination.longitude ?? destination['longitude'];
+      
       final url = Uri.parse(
-        '$baseUrl/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson',
+        '$baseUrl/route/v1/driving/$originLng,$originLat;$destLng,$destLat?overview=full&geometries=geojson',
       );
 
       final response = await http.get(url).timeout(
@@ -37,9 +41,12 @@ class OSRMService {
           final route = data['routes'][0];
           final coordinates = route['geometry']['coordinates'] as List;
           
-          // Convert từ [lng, lat] sang LatLng
-          return coordinates.map((coord) {
-            return LatLng(coord[1], coord[0]); // lat, lng
+          // Convert từ [lng, lat] sang Map
+          return coordinates.map<Map<String, double>>((coord) {
+            return {
+              'latitude': coord[1].toDouble(),
+              'longitude': coord[0].toDouble(),
+            };
           }).toList();
         } else {
           throw Exception('No route found');
@@ -55,12 +62,17 @@ class OSRMService {
 
   /// Lấy thông tin chi tiết về lộ trình (khoảng cách, thời gian)
   static Future<Map<String, dynamic>> getRouteInfo({
-    required LatLng origin,
-    required LatLng destination,
+    required dynamic origin,
+    required dynamic destination,
   }) async {
     try {
+      final originLat = origin.latitude ?? origin['latitude'];
+      final originLng = origin.longitude ?? origin['longitude'];
+      final destLat = destination.latitude ?? destination['latitude'];
+      final destLng = destination.longitude ?? destination['longitude'];
+      
       final url = Uri.parse(
-        '$baseUrl/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}',
+        '$baseUrl/route/v1/driving/$originLng,$originLat;$destLng,$destLat',
       );
 
       final response = await http.get(url).timeout(

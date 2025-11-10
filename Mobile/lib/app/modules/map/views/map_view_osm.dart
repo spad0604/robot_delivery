@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../controllers/map_controller.dart' as app;
+import '../controllers/map_controller_osm.dart';
 
-class MapView extends GetView<app.MapController> {
-  const MapView({super.key});
+class MapViewOSM extends GetView<MapControllerOSM> {
+  const MapViewOSM({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -13,37 +13,42 @@ class MapView extends GetView<app.MapController> {
       body: Stack(
         children: [
           // OpenStreetMap - wrapped in Obx to update markers and polylines
-          Obx(() => FlutterMap(
-            mapController: controller.mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(10.762622, 106.660172), // TP.HCM
-              initialZoom: 14,
-              onMapReady: () {
-                controller.onMapReady();
-              },
-              onTap: (tapPosition, point) {
-                controller.setDestination(point);
-              },
-            ),
+          Obx(() {
+            final markers = controller.markers;
+            final polylines = controller.polylines;
+            
+            return FlutterMap(
+              mapController: controller.mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(10.762622, 106.660172), // TP.HCM
+                initialZoom: 14,
+                onTap: (tapPosition, point) {
+                  controller.setDestination(point);
+                },
+              ),
               children: [
-              // Tile Layer - OpenStreetMap (Free, no API key needed!)
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.robot_delivery',
-                maxZoom: 19,
-                // Disable caching to avoid path_provider issues
-                tileProvider: NetworkTileProvider(),
-              ),              // Polylines (routes)
-              PolylineLayer(
-                polylines: controller.polylines.toList(),
-              ),
-              
-              // Markers
-              MarkerLayer(
-                markers: controller.markers.toList(),
-              ),
-            ],
-          )),
+                // Tile Layer - OpenStreetMap (Free, no API key needed!)
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.robot_delivery',
+                  maxZoom: 19,
+                  // Có thể thay thế bằng các tile server khác:
+                  // HOT (Humanitarian): 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'
+                  // CartoDB: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                ),
+                
+                // Polylines (routes)
+                PolylineLayer(
+                  polylines: polylines,
+                ),
+                
+                // Markers
+                MarkerLayer(
+                  markers: markers,
+                ),
+              ],
+            );
+          }),
 
           // Top App Bar with gradient
           Positioned(
@@ -84,7 +89,7 @@ class MapView extends GetView<app.MapController> {
                             Icon(Icons.smart_toy, color: Colors.blue[700], size: 28),
                             const SizedBox(width: 8),
                             const Text(
-                              'Robot Delivery',
+                              'Robot Delivery (OSM)',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -277,10 +282,12 @@ class MapView extends GetView<app.MapController> {
                   _buildFloatingButton(
                     icon: Icons.my_location,
                     onTap: () {
-                      controller.mapController.move(
-                        controller.robotStartPosition,
-                        14,
-                      );
+                      if (controller.mapController != null) {
+                        controller.mapController!.move(
+                          controller.robotStartPosition, 
+                          14
+                        );
+                      }
                     },
                     tooltip: 'Về vị trí Robot',
                   ),
@@ -288,9 +295,9 @@ class MapView extends GetView<app.MapController> {
                   _buildFloatingButton(
                     icon: Icons.zoom_in,
                     onTap: () {
-                      final currentZoom = controller.mapController.camera.zoom;
-                      controller.mapController.move(
-                        controller.mapController.camera.center,
+                      final currentZoom = controller.mapController?.camera.zoom ?? 14;
+                      controller.mapController?.move(
+                        controller.mapController!.camera.center,
                         currentZoom + 1,
                       );
                     },
@@ -300,9 +307,9 @@ class MapView extends GetView<app.MapController> {
                   _buildFloatingButton(
                     icon: Icons.zoom_out,
                     onTap: () {
-                      final currentZoom = controller.mapController.camera.zoom;
-                      controller.mapController.move(
-                        controller.mapController.camera.center,
+                      final currentZoom = controller.mapController?.camera.zoom ?? 14;
+                      controller.mapController?.move(
+                        controller.mapController!.camera.center,
                         currentZoom - 1,
                       );
                     },

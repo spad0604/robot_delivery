@@ -8,7 +8,7 @@ import 'package:robot_delivery/app/data/models/delivery_order.dart';
 import 'package:robot_delivery/app/data/services/firebase_service.dart';
 import 'package:robot_delivery/app/data/services/osrm_service.dart';
 
-class MapController extends GetxController {
+class MapControllerOSM extends GetxController {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   
   final fm.MapController mapController = fm.MapController();
@@ -18,7 +18,6 @@ class MapController extends GetxController {
   final RxList<fm.Polyline> polylines = <fm.Polyline>[].obs;
   final RxList<LatLng> routeCoordinates = <LatLng>[].obs;
   final RxBool isLoading = false.obs;
-  final RxBool isMapReady = false.obs; // Track if map is ready
 
   // Robot position from Firebase (reactive)
   final Rx<LatLng> robotPosition = const LatLng(21.028511, 105.804817).obs; // Tọa độ mặc định Hà Nội
@@ -32,29 +31,14 @@ class MapController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    getCurrentLocation();
     _startRobotPositionUpdates();
-    // Don't call getCurrentLocation here - wait for map to be ready
   }
 
   @override
   void onClose() {
     _robotPositionTimer?.cancel();
     super.onClose();
-  }
-
-  // Call this when map is ready
-  void onMapReady() {
-    isMapReady.value = true;
-    // Focus vào vị trí robot ngay khi map sẵn sàng
-    _focusOnRobot();
-  }
-  
-  // Focus map về vị trí robot
-  void _focusOnRobot() {
-    if (isMapReady.value) {
-      mapController.move(robotPosition.value, 15.0);
-      _updateMarkers(); // Cập nhật markers để hiển thị robot
-    }
   }
 
   // Bắt đầu cập nhật vị trí robot từ Firebase mỗi 30 giây
@@ -73,6 +57,7 @@ class MapController extends GetxController {
     try {
       final position = await _firebaseService.getRobotPosition();
       if (position != null) {
+        // Convert Map to LatLng
         robotPosition.value = LatLng(position['latitude']!, position['longitude']!);
         // Cập nhật marker robot
         _updateMarkers();
@@ -114,14 +99,8 @@ class MapController extends GetxController {
       // Update markers
       _updateMarkers();
 
-      // Move camera to robot position - only if map is ready
-      if (isMapReady.value) {
-        try {
-          mapController.move(robotPosition.value, 14);
-        } catch (e) {
-          print('Map controller error: $e');
-        }
-      }
+      // Move camera to robot position
+      mapController.move(robotPosition.value, 14);
     } catch (e) {
       print('Error getting location: $e');
       Get.snackbar('Lỗi', 'Không thể lấy vị trí hiện tại');
@@ -223,10 +202,14 @@ class MapController extends GetxController {
       routeCoordinates.clear();
       polylines.clear();
 
+      // Convert flutter_map LatLng to Google Maps LatLng for OSRM service
+      final originGM = _toGoogleMapsLatLng(robotPosition.value);
+      final destGM = _toGoogleMapsLatLng(selectedDestination.value!);
+
       // Sử dụng OSRM - miễn phí, không cần API key
       final route = await OSRMService.getRoute(
-        origin: robotPosition.value,
-        destination: selectedDestination.value!,
+        origin: originGM,
+        destination: destGM,
       );
 
       if (route.isNotEmpty) {
@@ -249,8 +232,8 @@ class MapController extends GetxController {
         
         // Lấy thông tin khoảng cách và thời gian
         final routeInfo = await OSRMService.getRouteInfo(
-          origin: robotPosition.value,
-          destination: selectedDestination.value!,
+          origin: originGM,
+          destination: destGM,
         );
         
         Get.snackbar(
@@ -296,6 +279,12 @@ class MapController extends GetxController {
     }
   }
 
+  // Convert flutter_map LatLng to Google Maps LatLng
+  dynamic _toGoogleMapsLatLng(LatLng point) {
+    // Return a simple object that OSRM service can use
+    return _LatLngAdapter(point.latitude, point.longitude);
+  }
+
   // Create a straight line route as fallback
   void _createStraightRoute() {
     if (selectedDestination.value == null) return;
@@ -319,8 +308,6 @@ class MapController extends GetxController {
       points: routeCoordinates,
       color: const Color(0xFFFF9800), // Orange color for fallback route
       strokeWidth: 5,
-      borderStrokeWidth: 2,
-      borderColor: Colors.white,
     );
 
     polylines.add(polyline);
@@ -443,4 +430,12 @@ class MapController extends GetxController {
     polylines.clear();
     _updateMarkers();
   }
+}
+
+// Adapter class for LatLng compatibility
+class _LatLngAdapter {
+  final double latitude;
+  final double longitude;
+
+  _LatLngAdapter(this.latitude, this.longitude);
 }

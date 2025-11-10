@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+// import 'package:google_maps_flutter/google_maps_flutter.dart'; // Commented out - migrating to OSM
 import '../../../data/models/delivery_order.dart';
 
 class OrderDetailView extends StatefulWidget {
@@ -13,16 +13,17 @@ class OrderDetailView extends StatefulWidget {
 }
 
 class _OrderDetailViewState extends State<OrderDetailView> {
-  GoogleMapController? mapController;
-  Set<Marker> markers = {};
-  Set<Polyline> polylines = {};
+  // GoogleMapController? mapController; // Commented out
+  // Set<Marker> markers = {}; // Commented out
+  // Set<Polyline> polylines = {}; // Commented out
 
   @override
   void initState() {
     super.initState();
-    _setupMapData();
+    // _setupMapData(); // Commented out
   }
 
+  /* Commented out - migrating to OSM
   void _setupMapData() {
     // Add destination marker
     markers.add(
@@ -60,6 +61,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       );
     }
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,25 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       ),
       body: Column(
         children: [
-          // Map section
+          // Map section - Temporarily disabled during migration to OSM
+          Container(
+            height: 300,
+            color: Colors.grey[200],
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.map, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Bản đồ đang được nâng cấp lên OpenStreetMap',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          /* Commented out Google Maps
           SizedBox(
             height: 300,
             child: GoogleMap(
@@ -88,6 +108,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
               zoomControlsEnabled: true,
             ),
           ),
+          */
 
           // Order details
           Expanded(
@@ -235,6 +256,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     return '[\n  $points\n]';
   }
 
+  /* Commented out - Google Maps specific method
   void _fitBounds() {
     if (mapController == null) return;
     if (widget.order.routePoints == null || widget.order.routePoints!.isEmpty) return;
@@ -266,4 +288,5 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       CameraUpdate.newLatLngBounds(bounds, 50),
     );
   }
+  */
 }

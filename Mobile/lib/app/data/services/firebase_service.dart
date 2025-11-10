@@ -126,4 +126,52 @@ class FirebaseService extends GetxService {
       return false;
     }
   }
+
+  // Get robot position from Firebase
+  // Returns Map if found, null if not found (will use default Hanoi coordinates)
+  Future<Map<String, double>?> getRobotPosition() async {
+    try {
+      final snapshot = await _database.child('robot').get();
+      if (snapshot.exists) {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        
+        // Xử lý cả trường hợp String và num
+        double? lat;
+        double? lon;
+        
+        if (data['lat'] != null) {
+          if (data['lat'] is num) {
+            lat = (data['lat'] as num).toDouble();
+          } else if (data['lat'] is String) {
+            lat = double.tryParse(data['lat'] as String);
+          }
+        }
+        
+        if (data['lon'] != null) {
+          if (data['lon'] is num) {
+            lon = (data['lon'] as num).toDouble();
+          } else if (data['lon'] is String) {
+            lon = double.tryParse(data['lon'] as String);
+          }
+        }
+        
+        if (lat != null && lon != null) {
+          print('Robot position from Firebase: lat=$lat, lon=$lon');
+          return {
+            'latitude': lat,
+            'longitude': lon,
+          };
+        } else {
+          print('Invalid robot position data: lat=$lat, lon=$lon');
+        }
+      } else {
+        print('No robot data found in Firebase');
+      }
+      // Nếu không có dữ liệu hoặc dữ liệu không hợp lệ, trả về null để dùng tọa độ mặc định Hà Nội
+      return null;
+    } catch (e) {
+      print('Error getting robot position: $e');
+      return null;
+    }
+  }
 }
