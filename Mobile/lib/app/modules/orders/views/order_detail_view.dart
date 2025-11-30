@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-// import 'package:google_maps_flutter/google_maps_flutter.dart'; // Commented out - migrating to OSM
+import 'package:flutter_map/flutter_map.dart' as fm;
+import 'package:latlong2/latlong.dart';
 import '../../../data/models/delivery_order.dart';
+import '../../../data/services/firebase_service.dart';
 
 class OrderDetailView extends StatefulWidget {
   final DeliveryOrder order;
@@ -13,55 +15,148 @@ class OrderDetailView extends StatefulWidget {
 }
 
 class _OrderDetailViewState extends State<OrderDetailView> {
-  // GoogleMapController? mapController; // Commented out
-  // Set<Marker> markers = {}; // Commented out
-  // Set<Polyline> polylines = {}; // Commented out
+  final fm.MapController mapController = fm.MapController();
+  final FirebaseService _firebaseService = Get.find<FirebaseService>();
+  LatLng? robotPosition;
+  List<fm.Marker> markers = [];
+  List<fm.Polyline> polylines = [];
 
   @override
   void initState() {
     super.initState();
-    // _setupMapData(); // Commented out
+    _setupMapData();
   }
 
-  /* Commented out - migrating to OSM
-  void _setupMapData() {
-    // Add destination marker
+  Future<void> _setupMapData() async {
+    // Lấy vị trí robot từ Firebase
+    final position = await _firebaseService.getRobotPosition();
+    if (position != null) {
+      robotPosition = LatLng(position['latitude']!, position['longitude']!);
+    } else {
+      // Vị trí mặc định nếu không lấy được
+      robotPosition = const LatLng(21.028511, 105.804817);
+    }
+
+    // Tạo markers
+    _createMarkers();
+    
+    // Tạo polyline nếu có route points
+    _createPolyline();
+    
+    setState(() {});
+    
+    // Fit bounds sau khi map render
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _fitBounds();
+    });
+  }
+
+  void _createMarkers() {
+    markers.clear();
+
+    // Robot marker
+    if (robotPosition != null) {
+      markers.add(
+        fm.Marker(
+          width: 80,
+          height: 80,
+          point: robotPosition!,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Robot',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.smart_toy,
+                color: Colors.blue,
+                size: 40,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Destination marker
     markers.add(
-      Marker(
-        markerId: const MarkerId('destination'),
-        position: LatLng(widget.order.destinationLat, widget.order.destinationLng),
-        infoWindow: InfoWindow(title: widget.order.receiverName),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      fm.Marker(
+        width: 80,
+        height: 80,
+        point: LatLng(widget.order.destinationLat, widget.order.destinationLng),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                widget.order.receiverName,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.location_on,
+              color: Colors.red,
+              size: 40,
+            ),
+          ],
+        ),
       ),
     );
+  }
 
-    // Add robot start marker
-    markers.add(
-      Marker(
-        markerId: const MarkerId('robot'),
-        position: const LatLng(10.762622, 106.660172),
-        infoWindow: const InfoWindow(title: 'Vị trí Robot'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      ),
-    );
-
-    // Add route polyline if available
+  void _createPolyline() {
+    polylines.clear();
+    
     if (widget.order.routePoints != null && widget.order.routePoints!.isNotEmpty) {
       List<LatLng> routeCoords = widget.order.routePoints!
           .map((point) => LatLng(point.lat, point.lng))
           .toList();
 
       polylines.add(
-        Polyline(
-          polylineId: const PolylineId('route'),
-          color: const Color(0xFF4285F4),
-          width: 5,
+        fm.Polyline(
           points: routeCoords,
+          color: const Color(0xFF4285F4),
+          strokeWidth: 4,
         ),
       );
     }
   }
-  */
+
+  void _fitBounds() {
+    if (robotPosition == null) return;
+    
+    List<LatLng> points = [
+      robotPosition!,
+      LatLng(widget.order.destinationLat, widget.order.destinationLng),
+    ];
+
+    final bounds = fm.LatLngBounds.fromPoints(points);
+    mapController.fitCamera(
+      fm.CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(50),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,43 +167,49 @@ class _OrderDetailViewState extends State<OrderDetailView> {
       ),
       body: Column(
         children: [
-          // Map section - Temporarily disabled during migration to OSM
-          Container(
-            height: 300,
-            color: Colors.grey[200],
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Bản đồ đang được nâng cấp lên OpenStreetMap',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          /* Commented out Google Maps
+          // Map section - OpenStreetMap
           SizedBox(
             height: 300,
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: LatLng(widget.order.destinationLat, widget.order.destinationLng),
-                zoom: 13,
-              ),
-              markers: markers,
-              polylines: polylines,
-              onMapCreated: (controller) {
-                mapController = controller;
-                _fitBounds();
-              },
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: true,
-            ),
+            child: robotPosition == null
+                ? Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : fm.FlutterMap(
+                    mapController: mapController,
+                    options: fm.MapOptions(
+                      initialCenter: LatLng(
+                        widget.order.destinationLat,
+                        widget.order.destinationLng,
+                      ),
+                      initialZoom: 13,
+                      minZoom: 5,
+                      maxZoom: 18,
+                    ),
+                    children: [
+                      // Tile Layer - OpenStreetMap
+                      fm.TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.robot_delivery',
+                        maxZoom: 19,
+                        tileProvider: fm.NetworkTileProvider(),
+                      ),
+                      
+                      // Polyline Layer
+                      if (polylines.isNotEmpty)
+                        fm.PolylineLayer(
+                          polylines: polylines,
+                        ),
+                      
+                      // Marker Layer
+                      fm.MarkerLayer(
+                        markers: markers,
+                      ),
+                    ],
+                  ),
           ),
-          */
 
           // Order details
           Expanded(
@@ -255,38 +356,4 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     
     return '[\n  $points\n]';
   }
-
-  /* Commented out - Google Maps specific method
-  void _fitBounds() {
-    if (mapController == null) return;
-    if (widget.order.routePoints == null || widget.order.routePoints!.isEmpty) return;
-
-    final coords = widget.order.routePoints!
-        .map((point) => LatLng(point.lat, point.lng))
-        .toList();
-
-    if (coords.isEmpty) return;
-
-    double minLat = coords.first.latitude;
-    double maxLat = coords.first.latitude;
-    double minLng = coords.first.longitude;
-    double maxLng = coords.first.longitude;
-
-    for (var coord in coords) {
-      if (coord.latitude < minLat) minLat = coord.latitude;
-      if (coord.latitude > maxLat) maxLat = coord.latitude;
-      if (coord.longitude < minLng) minLng = coord.longitude;
-      if (coord.longitude > maxLng) maxLng = coord.longitude;
-    }
-
-    final bounds = LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
-
-    mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 50),
-    );
-  }
-  */
 }

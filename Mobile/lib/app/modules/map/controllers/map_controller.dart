@@ -253,22 +253,28 @@ class MapController extends GetxController {
           destination: selectedDestination.value!,
         );
         
-        Get.snackbar(
-          'Thành công',
-          'Lộ trình: ${routeInfo['distanceText']} - ${routeInfo['durationText']}\n${routeCoordinates.length} điểm',
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.green[100],
-        );
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (Get.isSnackbarOpen != true) {
+          Get.rawSnackbar(
+            title: 'Thành công',
+            message: 'Lộ trình: ${routeInfo['distanceText']} - ${routeInfo['durationText']}\n${routeCoordinates.length} điểm',
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.green.shade100,
+          );
+        }
       } else {
         // Nếu không có kết quả, tạo đường thẳng
         _createStraightRoute();
         
-        Get.snackbar(
-          'Cảnh báo',
-          'Không thể tính lộ trình.\nSử dụng đường thẳng thay thế.',
-          duration: const Duration(seconds: 4),
-          backgroundColor: Colors.orange[100],
-        );
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (Get.isSnackbarOpen != true) {
+          Get.rawSnackbar(
+            title: 'Cảnh báo',
+            message: 'Không thể tính lộ trình.\\nSử dụng đường thẳng thay thế.',
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.orange.shade100,
+          );
+        }
       }
     } catch (e) {
       print('Error calculating route: $e');
@@ -285,12 +291,15 @@ class MapController extends GetxController {
         errorMessage = 'Lỗi: ${e.toString()}\nSử dụng đường thẳng thay thế.';
       }
       
-      Get.snackbar(
-        'Lỗi',
-        errorMessage,
-        duration: const Duration(seconds: 5),
-        backgroundColor: Colors.orange[100],
-      );
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (Get.isSnackbarOpen != true) {
+        Get.rawSnackbar(
+          title: 'Lỗi',
+          message: errorMessage,
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.orange.shade100,
+        );
+      }
     } finally {
       isLoading.value = false;
     }

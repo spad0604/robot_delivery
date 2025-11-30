@@ -617,14 +617,21 @@ class _OrderFormWidgetState extends State<_OrderFormWidget> {
                     controller: weightController,
                     label: 'Cân nặng (kg)',
                     icon: Icons.scale_outlined,
-                    hint: '5.5',
+                    hint: 'Tối đa 5kg',
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Vui lòng nhập cân nặng';
                       }
-                      if (double.tryParse(value) == null) {
+                      final weight = double.tryParse(value);
+                      if (weight == null) {
                         return 'Số không hợp lệ';
+                      }
+                      if (weight <= 0) {
+                        return 'Cân nặng phải lớn hơn 0';
+                      }
+                      if (weight > 5) {
+                        return 'Cân nặng không được quá 5kg';
                       }
                       return null;
                     },
