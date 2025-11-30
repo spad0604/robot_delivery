@@ -340,35 +340,19 @@ class MapController extends GetxController {
     );
   }
 
-  // Divide route into smaller segments
-  List<RoutePoint> divideRouteIntoPoints({int segmentCount = 50}) {
+  // Convert all route coordinates to RoutePoint list
+  List<RoutePoint> convertRouteToPoints() {
     if (routeCoordinates.isEmpty) return [];
 
     List<RoutePoint> points = [];
     
-    // If route has fewer points than desired segments, use all points
-    if (routeCoordinates.length <= segmentCount) {
-      for (int i = 0; i < routeCoordinates.length; i++) {
-        points.add(RoutePoint(
-          lat: routeCoordinates[i].latitude,
-          lng: routeCoordinates[i].longitude,
-          order: i,
-        ));
-      }
-    } else {
-      // Sample points evenly along the route
-      double step = routeCoordinates.length / segmentCount;
-      for (int i = 0; i < segmentCount; i++) {
-        int index = (i * step).floor();
-        if (index >= routeCoordinates.length) {
-          index = routeCoordinates.length - 1;
-        }
-        points.add(RoutePoint(
-          lat: routeCoordinates[index].latitude,
-          lng: routeCoordinates[index].longitude,
-          order: i,
-        ));
-      }
+    // Chuyển tất cả các điểm từ OSRM thành RoutePoint
+    for (int i = 0; i < routeCoordinates.length; i++) {
+      points.add(RoutePoint(
+        lat: routeCoordinates[i].latitude,
+        lng: routeCoordinates[i].longitude,
+        order: i,
+      ));
     }
 
     return points;
@@ -395,8 +379,10 @@ class MapController extends GetxController {
     try {
       isLoading.value = true;
 
-      // Divide route into points
-      final routePoints = divideRouteIntoPoints(segmentCount: 50);
+      // Chuyển tất cả điểm từ OSRM thành RoutePoint
+      final routePoints = convertRouteToPoints();
+      
+      print('Uploading ${routePoints.length} points from OSRM to Firebase');
 
       // Create order
       final order = DeliveryOrder(
@@ -416,7 +402,7 @@ class MapController extends GetxController {
       if (orderId != null) {
         Get.snackbar(
           'Thành công',
-          'Đơn hàng đã được tạo với ID: $orderId',
+          'Đơn hàng đã được tạo với ID: $orderId\n${routePoints.length} điểm lộ trình đã được lưu',
           duration: const Duration(seconds: 3),
         );
         

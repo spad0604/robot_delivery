@@ -27,7 +27,11 @@ class OrdersController extends GetxController {
       // Sử dụng snackbar sau khi frame render xong
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (Get.isSnackbarOpen != true) {
-          Get.snackbar('Lỗi', 'Không thể tải danh sách đơn hàng');
+          Get.rawSnackbar(
+            title: 'Lỗi',
+            message: 'Không thể tải danh sách đơn hàng',
+            duration: const Duration(seconds: 2),
+          );
         }
       });
     });
@@ -40,28 +44,37 @@ class OrdersController extends GetxController {
         content: const Text('Bạn có chắc muốn xóa đơn hàng này?'),
         actions: [
           TextButton(
-            onPressed: () => Get.back(result: false),
+            onPressed: () => Navigator.of(Get.overlayContext!).pop(false),
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () => Get.back(result: true),
+            onPressed: () => Navigator.of(Get.overlayContext!).pop(true),
             child: const Text('Xóa'),
           ),
         ],
       ),
+      barrierDismissible: false,
     );
 
     if (confirmed == true) {
       final success = await _firebaseService.deleteOrder(orderId);
       // Chờ dialog đóng hoàn toàn
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 150));
       if (success) {
         if (Get.isSnackbarOpen != true) {
-          Get.snackbar('Thành công', 'Đã xóa đơn hàng');
+          Get.rawSnackbar(
+            title: 'Thành công',
+            message: 'Đã xóa đơn hàng',
+            duration: const Duration(seconds: 2),
+          );
         }
       } else {
         if (Get.isSnackbarOpen != true) {
-          Get.snackbar('Lỗi', 'Không thể xóa đơn hàng');
+          Get.rawSnackbar(
+            title: 'Lỗi',
+            message: 'Không thể xóa đơn hàng',
+            duration: const Duration(seconds: 2),
+          );
         }
       }
     }
@@ -69,14 +82,22 @@ class OrdersController extends GetxController {
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     final success = await _firebaseService.updateOrderStatus(orderId, status);
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 150));
     if (success) {
       if (Get.isSnackbarOpen != true) {
-        Get.snackbar('Thành công', 'Đã cập nhật trạng thái đơn hàng');
+        Get.rawSnackbar(
+          title: 'Thành công',
+          message: 'Đã cập nhật trạng thái đơn hàng',
+          duration: const Duration(seconds: 2),
+        );
       }
     } else {
       if (Get.isSnackbarOpen != true) {
-        Get.snackbar('Lỗi', 'Không thể cập nhật trạng thái');
+        Get.rawSnackbar(
+          title: 'Lỗi',
+          message: 'Không thể cập nhật trạng thái',
+          duration: const Duration(seconds: 2),
+        );
       }
     }
   }
