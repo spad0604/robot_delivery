@@ -37,7 +37,10 @@ class OrdersView extends GetView<OrdersController> {
             ),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Get.back(),
+              onPressed: () {
+                Get.closeAllSnackbars();
+                Get.back();
+              },
             ),
           ),
 

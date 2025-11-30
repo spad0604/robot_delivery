@@ -420,13 +420,6 @@ class MapView extends GetView<app.MapController> {
   }
 
   void _showOrderForm(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final ageController = TextEditingController();
-    final phoneController = TextEditingController();
-    final goodsController = TextEditingController();
-    final weightController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -434,7 +427,52 @@ class MapView extends GetView<app.MapController> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder: (context) => Container(
+      builder: (context) => _OrderFormWidget(controller: controller),
+    );
+  }
+}
+
+// Separate StatefulWidget for the order form to manage TextEditingController lifecycle
+class _OrderFormWidget extends StatefulWidget {
+  final app.MapController controller;
+  
+  const _OrderFormWidget({required this.controller});
+
+  @override
+  State<_OrderFormWidget> createState() => _OrderFormWidgetState();
+}
+
+class _OrderFormWidgetState extends State<_OrderFormWidget> {
+  final formKey = GlobalKey<FormState>();
+  late final TextEditingController nameController;
+  late final TextEditingController ageController;
+  late final TextEditingController phoneController;
+  late final TextEditingController goodsController;
+  late final TextEditingController weightController;
+
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController();
+    ageController = TextEditingController();
+    phoneController = TextEditingController();
+    goodsController = TextEditingController();
+    weightController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    ageController.dispose();
+    phoneController.dispose();
+    goodsController.dispose();
+    weightController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
@@ -611,7 +649,7 @@ class MapView extends GetView<app.MapController> {
                           Navigator.pop(context);
                           
                           // Tạo đơn hàng
-                          await controller.createDeliveryOrder(
+                          await widget.controller.createDeliveryOrder(
                             receiverName: name,
                             receiverAge: age,
                             phoneNumber: phone,
@@ -650,15 +688,7 @@ class MapView extends GetView<app.MapController> {
             ),
           ),
         ),
-      ),
-    ).whenComplete(() {
-      // Dispose controllers sau khi dialog đóng hoàn toàn
-      nameController.dispose();
-      ageController.dispose();
-      phoneController.dispose();
-      goodsController.dispose();
-      weightController.dispose();
-    });
+      );
   }
 
   Widget _buildTextField({

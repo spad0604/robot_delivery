@@ -23,8 +23,13 @@ class OrdersController extends GetxController {
       isLoading.value = false;
     }, onError: (error) {
       print('Error loading orders: $error');
-      Get.snackbar('Lỗi', 'Không thể tải danh sách đơn hàng');
       isLoading.value = false;
+      // Sử dụng snackbar sau khi frame render xong
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (Get.isSnackbarOpen != true) {
+          Get.snackbar('Lỗi', 'Không thể tải danh sách đơn hàng');
+        }
+      });
     });
   }
 
@@ -48,20 +53,31 @@ class OrdersController extends GetxController {
 
     if (confirmed == true) {
       final success = await _firebaseService.deleteOrder(orderId);
+      // Chờ dialog đóng hoàn toàn
+      await Future.delayed(const Duration(milliseconds: 100));
       if (success) {
-        Get.snackbar('Thành công', 'Đã xóa đơn hàng');
+        if (Get.isSnackbarOpen != true) {
+          Get.snackbar('Thành công', 'Đã xóa đơn hàng');
+        }
       } else {
-        Get.snackbar('Lỗi', 'Không thể xóa đơn hàng');
+        if (Get.isSnackbarOpen != true) {
+          Get.snackbar('Lỗi', 'Không thể xóa đơn hàng');
+        }
       }
     }
   }
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     final success = await _firebaseService.updateOrderStatus(orderId, status);
+    await Future.delayed(const Duration(milliseconds: 100));
     if (success) {
-      Get.snackbar('Thành công', 'Đã cập nhật trạng thái đơn hàng');
+      if (Get.isSnackbarOpen != true) {
+        Get.snackbar('Thành công', 'Đã cập nhật trạng thái đơn hàng');
+      }
     } else {
-      Get.snackbar('Lỗi', 'Không thể cập nhật trạng thái');
+      if (Get.isSnackbarOpen != true) {
+        Get.snackbar('Lỗi', 'Không thể cập nhật trạng thái');
+      }
     }
   }
 
