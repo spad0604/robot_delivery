@@ -127,7 +127,7 @@ class FirebaseService extends GetxService {
     }
   }
 
-  // Get robot position from Firebase
+  // Get robot position from Firebase (one-time fetch)
   // Returns Map if found, null if not found (will use default Hanoi coordinates)
   Future<Map<String, double>?> getRobotPosition() async {
     try {
@@ -173,5 +173,52 @@ class FirebaseService extends GetxService {
       print('Error getting robot position: $e');
       return null;
     }
+  }
+
+  // Listen to robot position changes in real-time (Stream)
+  Stream<Map<String, double>?> getRobotPositionStream() {
+    return _database.child('robot').onValue.map((event) {
+      try {
+        if (event.snapshot.exists) {
+          final data = event.snapshot.value as Map<dynamic, dynamic>;
+          
+          // Xử lý cả trường hợp String và num
+          double? lat;
+          double? lon;
+          
+          if (data['lat'] != null) {
+            if (data['lat'] is num) {
+              lat = (data['lat'] as num).toDouble();
+            } else if (data['lat'] is String) {
+              lat = double.tryParse(data['lat'] as String);
+            }
+          }
+          
+          if (data['lon'] != null) {
+            if (data['lon'] is num) {
+              lon = (data['lon'] as num).toDouble();
+            } else if (data['lon'] is String) {
+              lon = double.tryParse(data['lon'] as String);
+            }
+          }
+          
+          if (lat != null && lon != null) {
+            print('🤖 Robot position updated (real-time): lat=$lat, lon=$lon');
+            return {
+              'latitude': lat,
+              'longitude': lon,
+            };
+          } else {
+            print('Invalid robot position data in stream: lat=$lat, lon=$lon');
+          }
+        } else {
+          print('No robot data in stream');
+        }
+        return null;
+      } catch (e) {
+        print('Error parsing robot position stream: $e');
+        return null;
+      }
+    });
   }
 }

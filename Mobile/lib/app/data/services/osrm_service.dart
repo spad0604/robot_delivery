@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class OSRMService {
-  // OSRM public demo server (miễn phí)
-  static const String baseUrl = 'https://router.project-osrm.org';
+  // Danh sách OSRM servers (thử lần lượt nếu server đầu bị lỗi)
+  static const List<String> servers = [
+    'https://router.project-osrm.org',
+    'https://routing.openstreetmap.de/routed-car',
+  ];
   
-  // Các server OSRM công khai khác có thể dùng:
-  // - https://routing.openstreetmap.de/routed-car
-  // - https://router.project-osrm.org
+  static int currentServerIndex = 0;
   
   /// Lấy lộ trình giữa 2 điểm
   /// Returns: List of Map<String, double> points forming the route
@@ -15,49 +16,73 @@ class OSRMService {
     required dynamic origin,
     required dynamic destination,
   }) async {
-    try {
-      // Format: /route/v1/{profile}/{coordinates}
-      // coordinates: longitude,latitude;longitude,latitude
-      final originLat = origin.latitude ?? origin['latitude'];
-      final originLng = origin.longitude ?? origin['longitude'];
-      final destLat = destination.latitude ?? destination['latitude'];
-      final destLng = destination.longitude ?? destination['longitude'];
+    final originLat = origin.latitude ?? origin['latitude'];
+    final originLng = origin.longitude ?? origin['longitude'];
+    final destLat = destination.latitude ?? destination['latitude'];
+    final destLng = destination.longitude ?? destination['longitude'];
+    
+    // Thử từng server cho đến khi thành công
+    for (int attempt = 0; attempt < servers.length; attempt++) {
+      final serverUrl = servers[(currentServerIndex + attempt) % servers.length];
       
-      final url = Uri.parse(
-        '$baseUrl/route/v1/driving/$originLng,$originLat;$destLng,$destLat?overview=full&geometries=geojson',
-      );
-
-      final response = await http.get(url).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Request timeout');
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      try {
+        print('Trying OSRM server: $serverUrl');
         
-        if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
-          final route = data['routes'][0];
-          final coordinates = route['geometry']['coordinates'] as List;
+        final url = Uri.parse(
+          '$serverUrl/route/v1/driving/$originLng,$originLat;$destLng,$destLat?overview=full&geometries=geojson',
+        );
+
+        final response = await http.get(url).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw Exception('Request timeout after 30s');
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
           
-          // Convert từ [lng, lat] sang Map
-          return coordinates.map<Map<String, double>>((coord) {
-            return {
-              'latitude': coord[1].toDouble(),
-              'longitude': coord[0].toDouble(),
-            };
-          }).toList();
+          if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
+            final route = data['routes'][0];
+            final coordinates = route['geometry']['coordinates'] as List;
+            
+            // Thành công - lưu server này cho lần sau
+            currentServerIndex = (currentServerIndex + attempt) % servers.length;
+            print('OSRM success with server: $serverUrl');
+            
+            // Convert từ [lng, lat] sang Map
+            return coordinates.map<Map<String, double>>((coord) {
+              return {
+                'latitude': coord[1].toDouble(),
+                'longitude': coord[0].toDouble(),
+              };
+            }).toList();
+          } else {
+            throw Exception('No route found');
+          }
+        } else if (response.statusCode == 504 || response.statusCode == 502 || response.statusCode == 503) {
+          print('Server $serverUrl timeout/unavailable (${response.statusCode}), trying next...');
+          // Tiếp tục thử server tiếp theo
+          continue;
         } else {
-          throw Exception('No route found');
+          throw Exception('Failed to fetch route: ${response.statusCode}');
         }
-      } else {
-        throw Exception('Failed to fetch route: ${response.statusCode}');
+      } catch (e) {
+        print('OSRM Error with $serverUrl: $e');
+        
+        // Nếu còn server để thử thì tiếp tục
+        if (attempt < servers.length - 1) {
+          print('Trying next server...');
+          await Future.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        
+        // Hết server rồi → throw error
+        rethrow;
       }
-    } catch (e) {
-      print('OSRM Error: $e');
-      rethrow;
     }
+    
+    throw Exception('All OSRM servers failed');
   }
 
   /// Lấy thông tin chi tiết về lộ trình (khoảng cách, thời gian)
@@ -71,12 +96,15 @@ class OSRMService {
       final destLat = destination.latitude ?? destination['latitude'];
       final destLng = destination.longitude ?? destination['longitude'];
       
+      // Sử dụng server hiện tại (đã được chọn từ getRoute)
+      final serverUrl = servers[currentServerIndex];
+      
       final url = Uri.parse(
-        '$baseUrl/route/v1/driving/$originLng,$originLat;$destLng,$destLat',
+        '$serverUrl/route/v1/driving/$originLng,$originLat;$destLng,$destLat',
       );
 
       final response = await http.get(url).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 30),
       );
 
       if (response.statusCode == 200) {

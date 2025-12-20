@@ -22,11 +22,14 @@ class MapControllerOSM extends GetxController {
   // Robot position from Firebase (reactive)
   final Rx<LatLng> robotPosition = const LatLng(21.028511, 105.804817).obs; // Tọa độ mặc định Hà Nội
   
-  // Timer để cập nhật vị trí robot
-  Timer? _robotPositionTimer;
+  // Stream subscription để lắng nghe vị trí robot real-time
+  StreamSubscription<Map<String, double>?>? _robotPositionSubscription;
 
   // Robot starting position (có thể cấu hình theo vị trí thực tế)
   final LatLng robotStartPosition = const LatLng(10.762622, 106.660172); // TP.HCM
+  
+  // Auto-follow robot on map
+  final RxBool autoFollowRobot = true.obs;
 
   @override
   void onInit() {
@@ -37,37 +40,40 @@ class MapControllerOSM extends GetxController {
 
   @override
   void onClose() {
-    _robotPositionTimer?.cancel();
+    _robotPositionSubscription?.cancel();
     super.onClose();
   }
 
-  // Bắt đầu cập nhật vị trí robot từ Firebase mỗi 30 giây
+  // Bắt đầu lắng nghe vị trí robot từ Firebase theo thời gian thực
   void _startRobotPositionUpdates() {
-    // Lấy vị trí ngay lập tức
-    _fetchRobotPosition();
-    
-    // Cập nhật mỗi 30 giây
-    _robotPositionTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      _fetchRobotPosition();
-    });
-  }
-
-  // Lấy vị trí robot từ Firebase
-  Future<void> _fetchRobotPosition() async {
-    try {
-      final position = await _firebaseService.getRobotPosition();
-      if (position != null) {
-        // Convert Map to LatLng
-        robotPosition.value = LatLng(position['latitude']!, position['longitude']!);
-        // Cập nhật marker robot
-        _updateMarkers();
-        print('Robot position updated: ${position['latitude']}, ${position['longitude']}');
-      } else {
-        print('Using default Hanoi position');
-      }
-    } catch (e) {
-      print('Error fetching robot position: $e');
-    }
+    // Lắng nghe thay đổi vị trí robot real-time
+    _robotPositionSubscription = _firebaseService.getRobotPositionStream().listen(
+      (position) {
+        if (position != null) {
+          final newPosition = LatLng(position['latitude']!, position['longitude']!);
+          robotPosition.value = newPosition;
+          
+          // Cập nhật marker robot
+          _updateMarkers();
+          
+          // Tự động di chuyển bản đồ theo robot nếu bật auto-follow
+          if (autoFollowRobot.value) {
+            try {
+              mapController.move(newPosition, mapController.camera.zoom);
+            } catch (e) {
+              print('Error moving map: $e');
+            }
+          }
+          
+          print('🤖 Robot position updated (real-time): ${position['latitude']}, ${position['longitude']}');
+        } else {
+          print('Using default Hanoi position');
+        }
+      },
+      onError: (error) {
+        print('❌ Error listening to robot position: $error');
+      },
+    );
   }
 
   // Get current location

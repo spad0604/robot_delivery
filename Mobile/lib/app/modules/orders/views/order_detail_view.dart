@@ -251,29 +251,6 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       _formatDate(widget.order.createdAt),
                     ),
                   ]),
-                  const SizedBox(height: 16),
-                  
-                  if (widget.order.routePoints != null && widget.order.routePoints!.isNotEmpty) ...[
-                    _buildSectionTitle('Dữ liệu lộ trình (JSON)'),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          _getRouteJson(),
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

@@ -356,37 +356,12 @@ class OrdersView extends GetView<OrdersController> {
                         ),
                       ],
                     ),
-                    PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, color: Colors.grey[600]),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          controller.deleteOrder(order.id!);
-                        } else {
-                          controller.updateOrderStatus(order.id!, value);
-                        }
+                    IconButton(
+                      icon: Icon(Icons.delete_outline, color: Colors.red[400]),
+                      tooltip: 'Xóa đơn hàng',
+                      onPressed: () {
+                        controller.deleteOrder(order.id!);
                       },
-                      itemBuilder: (context) => [
-                        _buildMenuItem(Icons.schedule, 'Chờ xử lý', 'pending', Colors.orange),
-                        _buildMenuItem(Icons.local_shipping, 'Đang giao', 'in_progress', Colors.blue),
-                        _buildMenuItem(Icons.check_circle, 'Hoàn thành', 'completed', Colors.green),
-                        const PopupMenuDivider(),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, size: 20, color: Colors.red[600]),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Xóa đơn hàng',
-                                style: TextStyle(color: Colors.red[600]),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
@@ -394,19 +369,6 @@ class OrdersView extends GetView<OrdersController> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildMenuItem(IconData icon, String text, String value, Color color) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
-          Text(text),
-        ],
       ),
     );
   }

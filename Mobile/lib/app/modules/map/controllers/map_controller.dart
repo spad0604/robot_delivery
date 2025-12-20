@@ -23,11 +23,14 @@ class MapController extends GetxController {
   // Robot position from Firebase (reactive)
   final Rx<LatLng> robotPosition = const LatLng(21.028511, 105.804817).obs; // Tọa độ mặc định Hà Nội
   
-  // Timer để cập nhật vị trí robot
-  Timer? _robotPositionTimer;
+  // Stream subscription để lắng nghe vị trí robot real-time
+  StreamSubscription<Map<String, double>?>? _robotPositionSubscription;
 
   // Robot starting position (có thể cấu hình theo vị trí thực tế)
   final LatLng robotStartPosition = const LatLng(10.762622, 106.660172); // TP.HCM
+  
+  // Auto-follow robot on map
+  final RxBool autoFollowRobot = true.obs;
 
   @override
   void onInit() {
@@ -38,7 +41,7 @@ class MapController extends GetxController {
 
   @override
   void onClose() {
-    _robotPositionTimer?.cancel();
+    _robotPositionSubscription?.cancel();
     super.onClose();
   }
 
@@ -57,32 +60,36 @@ class MapController extends GetxController {
     }
   }
 
-  // Bắt đầu cập nhật vị trí robot từ Firebase mỗi 30 giây
+  // Bắt đầu lắng nghe vị trí robot từ Firebase theo thời gian thực
   void _startRobotPositionUpdates() {
-    // Lấy vị trí ngay lập tức
-    _fetchRobotPosition();
-    
-    // Cập nhật mỗi 30 giây
-    _robotPositionTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      _fetchRobotPosition();
-    });
-  }
-
-  // Lấy vị trí robot từ Firebase
-  Future<void> _fetchRobotPosition() async {
-    try {
-      final position = await _firebaseService.getRobotPosition();
-      if (position != null) {
-        robotPosition.value = LatLng(position['latitude']!, position['longitude']!);
-        // Cập nhật marker robot
-        _updateMarkers();
-        print('Robot position updated: ${position['latitude']}, ${position['longitude']}');
-      } else {
-        print('Using default Hanoi position');
-      }
-    } catch (e) {
-      print('Error fetching robot position: $e');
-    }
+    // Lắng nghe thay đổi vị trí robot real-time
+    _robotPositionSubscription = _firebaseService.getRobotPositionStream().listen(
+      (position) {
+        if (position != null) {
+          final newPosition = LatLng(position['latitude']!, position['longitude']!);
+          robotPosition.value = newPosition;
+          
+          // Cập nhật marker robot
+          _updateMarkers();
+          
+          // Tự động di chuyển bản đồ theo robot nếu bật auto-follow
+          if (autoFollowRobot.value && isMapReady.value) {
+            try {
+              mapController.move(newPosition, mapController.camera.zoom);
+            } catch (e) {
+              print('Error moving map: $e');
+            }
+          }
+          
+          print('🤖 Robot position updated (real-time): ${position['latitude']}, ${position['longitude']}');
+        } else {
+          print('Using default Hanoi position');
+        }
+      },
+      onError: (error) {
+        print('❌ Error listening to robot position: $error');
+      },
+    );
   }
 
   // Get current location
@@ -349,19 +356,36 @@ class MapController extends GetxController {
     );
   }
 
-  // Convert all route coordinates to RoutePoint list
+  // Convert route coordinates to RoutePoint list
+  // Nếu < 100 điểm: gửi tất cả
+  // Nếu > 100 điểm: lấy mẫu đều đặn để chỉ còn 100 điểm
   List<RoutePoint> convertRouteToPoints() {
     if (routeCoordinates.isEmpty) return [];
 
     List<RoutePoint> points = [];
+    final totalPoints = routeCoordinates.length;
     
-    // Chuyển tất cả các điểm từ OSRM thành RoutePoint
-    for (int i = 0; i < routeCoordinates.length; i++) {
-      points.add(RoutePoint(
-        lat: routeCoordinates[i].latitude,
-        lng: routeCoordinates[i].longitude,
-        order: i,
-      ));
+    if (totalPoints <= 100) {
+      // Ít hơn 100 điểm → gửi tất cả
+      for (int i = 0; i < totalPoints; i++) {
+        points.add(RoutePoint(
+          lat: routeCoordinates[i].latitude,
+          lng: routeCoordinates[i].longitude,
+          order: i,
+        ));
+      }
+    } else {
+      // Nhiều hơn 100 điểm → lấy mẫu đều đặn chỉ 100 điểm
+      final step = totalPoints / 100.0;
+      for (int i = 0; i < 100; i++) {
+        final index = (i * step).floor();
+        final actualIndex = index >= totalPoints ? totalPoints - 1 : index;
+        points.add(RoutePoint(
+          lat: routeCoordinates[actualIndex].latitude,
+          lng: routeCoordinates[actualIndex].longitude,
+          order: i,
+        ));
+      }
     }
 
     return points;
@@ -388,10 +412,12 @@ class MapController extends GetxController {
     try {
       isLoading.value = true;
 
-      // Chuyển tất cả điểm từ OSRM thành RoutePoint
+      // Chuyển điểm từ OSRM thành RoutePoint
+      // Nếu > 100 điểm sẽ tự động lấy mẫu còn 100
       final routePoints = convertRouteToPoints();
       
-      print('Uploading ${routePoints.length} points from OSRM to Firebase');
+      print('OSRM trả về ${routeCoordinates.length} điểm');
+      print('Uploading ${routePoints.length} điểm lên Firebase');
 
       // Create order
       final order = DeliveryOrder(
